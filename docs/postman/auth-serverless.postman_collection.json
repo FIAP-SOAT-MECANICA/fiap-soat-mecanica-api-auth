@@ -1,0 +1,57 @@
+{
+  "info": {
+    "name": "FIAP SOAT - Auth Serverless",
+    "description": "Coleção sem dados ou tokens reais para testar a autenticação por CPF.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "authBaseUrl",
+      "value": "https://REPLACE_ME.execute-api.REGION.amazonaws.com"
+    },
+    {
+      "key": "cpfAtivo",
+      "value": "REPLACE_WITH_VALID_TEST_CPF"
+    }
+  ],
+  "item": [
+    {
+      "name": "Autenticar cliente ativo por CPF",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "x-correlation-id",
+            "value": "postman-auth-demo-001"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"cpf\": \"{{cpfAtivo}}\"\n}"
+        },
+        "url": "{{authBaseUrl}}/auth/cpf"
+      }
+    },
+    {
+      "name": "Rejeitar CPF inválido",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"cpf\": \"000.000.000-00\"\n}"
+        },
+        "url": "{{authBaseUrl}}/auth/cpf"
+      }
+    }
+  ]
+}

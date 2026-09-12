@@ -1,0 +1,7 @@
+aws_region                = "us-east-1"
+environment               = "production"
+db_secret_arn             = "arn:aws:secretsmanager:REGION:ACCOUNT:secret:fiap/production/database"
+jwt_secret_arn            = "arn:aws:secretsmanager:REGION:ACCOUNT:secret:fiap/production/jwt"
+jwt_audience              = "fiap-soat-mecanica-api"
+private_subnet_ids        = ["subnet-REPLACE_ME"]
+lambda_security_group_ids = ["sg-REPLACE_ME"]

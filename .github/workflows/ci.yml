@@ -1,0 +1,41 @@
+name: CI
+
+on:
+  pull_request:
+    branches: [main, homolog]
+  push:
+    branches: [main, homolog]
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    name: Testar e validar Terraform
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Obter codigo
+        uses: actions/checkout@v4
+
+      - name: Configurar Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+          cache: maven
+
+      - name: Executar testes e gerar JAR da Lambda
+        run: mvn --batch-mode verify
+
+      - name: Configurar Terraform
+        uses: hashicorp/setup-terraform@v3
+
+      - name: Verificar formatacao Terraform
+        run: terraform -chdir=infra fmt -check -recursive
+
+      - name: Inicializar providers sem backend remoto
+        run: terraform -chdir=infra init -backend=false
+
+      - name: Validar configuracao Terraform
+        run: terraform -chdir=infra validate

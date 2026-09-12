@@ -1,0 +1,101 @@
+openapi: 3.0.3
+info:
+  title: FIAP SOAT Mecânica — Auth Serverless
+  version: 1.0.0
+  description: Autenticação de clientes por CPF e emissão de JWT para APIs protegidas.
+servers:
+  - url: https://{apiId}.execute-api.{region}.amazonaws.com
+    variables:
+      apiId:
+        default: REPLACE_ME
+      region:
+        default: us-east-1
+paths:
+  /auth/cpf:
+    post:
+      summary: Autentica um cliente ativo pelo CPF
+      operationId: authenticateCustomerByCpf
+      parameters:
+        - $ref: '#/components/parameters/CorrelationId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AuthRequest'
+      responses:
+        '200':
+          description: JWT emitido para cliente ativo
+          headers:
+            x-correlation-id:
+              $ref: '#/components/headers/CorrelationId'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TokenResponse'
+        '400':
+          description: CPF ou corpo inválido
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Cliente ausente ou sem permissão de autenticar
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '503':
+          description: Consulta à base de clientes indisponível
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+components:
+  parameters:
+    CorrelationId:
+      name: x-correlation-id
+      in: header
+      required: false
+      schema:
+        type: string
+        maxLength: 128
+      description: Identificador de correlação propagado para logs e resposta.
+  headers:
+    CorrelationId:
+      schema:
+        type: string
+      description: Identificador de correlação usado no processamento.
+  schemas:
+    AuthRequest:
+      type: object
+      additionalProperties: false
+      required: [cpf]
+      properties:
+        cpf:
+          type: string
+          example: '529.982.247-25'
+    TokenResponse:
+      type: object
+      required: [accessToken, tokenType, expiresIn]
+      properties:
+        accessToken:
+          type: string
+          format: jwt
+        tokenType:
+          type: string
+          example: Bearer
+        expiresIn:
+          type: integer
+          example: 3600
+    ErrorResponse:
+      type: object
+      required: [code, message, correlationId]
+      properties:
+        code:
+          type: string
+          example: ACCESS_DENIED
+        message:
+          type: string
+        correlationId:
+          type: string

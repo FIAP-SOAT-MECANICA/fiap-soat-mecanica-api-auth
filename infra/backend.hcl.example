@@ -1,0 +1,7 @@
+# Copie para um arquivo local ignorado pelo Git e substitua os marcadores.
+# O bucket deve ser criado uma unica vez pela infraestrutura compartilhada.
+bucket       = "<bucket-tfstate-existente>"
+key          = "auth/production/terraform.tfstate"
+region       = "us-east-1"
+encrypt      = true
+use_lockfile = true
