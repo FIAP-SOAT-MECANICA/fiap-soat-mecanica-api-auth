@@ -115,6 +115,24 @@ class AuthHandlerTest {
     }
 
     @Test
+    void usesApiGatewayRequestIdWhenCorrelationHeaderIsAbsent() {
+        AuthenticateCustomerUseCase service = new AuthenticateCustomerUseCase(
+                cpf -> Optional.of(new Customer(UUID.randomUUID(), CustomerStatus.ATIVO)),
+                customer -> new IssuedToken("signed-token", 3600)
+        );
+        AuthHandler handler = new AuthHandler(() -> service, new ObjectMapper());
+        APIGatewayV2HTTPEvent event = event("{\"cpf\":\"52998224725\"}", null);
+        APIGatewayV2HTTPEvent.RequestContext requestContext = new APIGatewayV2HTTPEvent.RequestContext();
+        requestContext.setRequestId("api-gateway-request-42");
+        event.setRequestContext(requestContext);
+
+        var response = handler.handleRequest(event, null);
+
+        assertEquals(200, response.getStatusCode());
+        assertEquals("api-gateway-request-42", response.getHeaders().get("x-correlation-id"));
+    }
+
+    @Test
     void rejectsInvalidCpfWithoutCallingTheCustomerRepository() {
         AuthHandler handler = new AuthHandler(
                 () -> new AuthenticateCustomerUseCase(

@@ -18,6 +18,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 
 import java.nio.charset.StandardCharsets;
 import java.util.Base64;
+import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.UUID;
 import java.util.function.Supplier;
@@ -42,27 +43,29 @@ public final class AuthHandler implements RequestHandler<APIGatewayV2HTTPEvent, 
     @Override
     public APIGatewayV2HTTPResponse handleRequest(APIGatewayV2HTTPEvent event, Context context) {
         String correlationId = correlationId(event, context);
+        String apiGatewayRequestId = apiGatewayRequestId(event);
         Cpf cpf;
         try {
             cpf = new Cpf(parseRequest(event).cpf());
         } catch (InvalidCpfException exception) {
-            return error(400, "INVALID_CPF", "CPF inválido", correlationId);
+            return error(400, "INVALID_CPF", "CPF inválido", correlationId, apiGatewayRequestId);
         } catch (JsonProcessingException | IllegalArgumentException exception) {
-            return error(400, "INVALID_REQUEST", "Corpo da requisição inválido", correlationId);
+            return error(400, "INVALID_REQUEST", "Corpo da requisição inválido", correlationId, apiGatewayRequestId);
         }
         try {
             IssuedToken token = authService.get().execute(cpf.value());
-            logger.info("auth_succeeded", correlationId, Map.of("principalType", "CLIENTE"));
+            log("auth_succeeded", correlationId, apiGatewayRequestId, Map.of("principalType", "CLIENTE"));
             return response(200, new TokenResponse(token.accessToken(), "Bearer", token.expiresInSeconds()), correlationId);
         } catch (AccessDeniedException exception) {
-            logger.info("auth_denied", correlationId, Map.of("reason", "customer_not_eligible"));
-            return error(401, "ACCESS_DENIED", "Não foi possível autenticar o cliente", correlationId);
+            log("auth_denied", correlationId, apiGatewayRequestId, Map.of("reason", "customer_not_eligible"));
+            return error(401, "ACCESS_DENIED", "Não foi possível autenticar o cliente", correlationId, apiGatewayRequestId);
         } catch (CustomerLookupException exception) {
-            logger.info("customer_lookup_unavailable", correlationId, Map.of());
-            return error(503, "CUSTOMER_DIRECTORY_UNAVAILABLE", "Serviço de autenticação indisponível", correlationId);
+            log("customer_lookup_unavailable", correlationId, apiGatewayRequestId, Map.of());
+            return error(503, "CUSTOMER_DIRECTORY_UNAVAILABLE", "Serviço de autenticação indisponível", correlationId, apiGatewayRequestId);
         } catch (Exception exception) {
-            logger.info("auth_unexpected_failure", correlationId, Map.of("exception", exception.getClass().getSimpleName()));
-            return error(500, "INTERNAL_ERROR", "Erro interno inesperado", correlationId);
+            log("auth_unexpected_failure", correlationId, apiGatewayRequestId,
+                    Map.of("exception", exception.getClass().getSimpleName()));
+            return error(500, "INTERNAL_ERROR", "Erro interno inesperado", correlationId, apiGatewayRequestId);
         }
     }
 
@@ -83,8 +86,9 @@ public final class AuthHandler implements RequestHandler<APIGatewayV2HTTPEvent, 
         return new AuthRequest(root.get("cpf").textValue());
     }
 
-    private APIGatewayV2HTTPResponse error(int status, String code, String message, String correlationId) {
-        logger.info("auth_failed", correlationId, Map.of("code", code, "httpStatus", status));
+    private APIGatewayV2HTTPResponse error(
+            int status, String code, String message, String correlationId, String apiGatewayRequestId) {
+        log("auth_failed", correlationId, apiGatewayRequestId, Map.of("code", code, "httpStatus", status));
         return response(status, new ErrorResponse(code, message, correlationId), correlationId);
     }
 
@@ -116,10 +120,30 @@ public final class AuthHandler implements RequestHandler<APIGatewayV2HTTPEvent, 
                 return incoming;
             }
         }
+        String apiGatewayRequestId = apiGatewayRequestId(event);
+        if (apiGatewayRequestId != null) {
+            return apiGatewayRequestId;
+        }
         if (context != null && context.getAwsRequestId() != null && !context.getAwsRequestId().isBlank()) {
             return context.getAwsRequestId();
         }
         return UUID.randomUUID().toString();
+    }
+
+    private String apiGatewayRequestId(APIGatewayV2HTTPEvent event) {
+        if (event == null || event.getRequestContext() == null) {
+            return null;
+        }
+        String requestId = event.getRequestContext().getRequestId();
+        return requestId != null && requestId.matches("[A-Za-z0-9._-]{1,128}") ? requestId : null;
+    }
+
+    private void log(String event, String correlationId, String apiGatewayRequestId, Map<String, Object> fields) {
+        Map<String, Object> logFields = new LinkedHashMap<>(fields);
+        if (apiGatewayRequestId != null) {
+            logFields.put("apiGatewayRequestId", apiGatewayRequestId);
+        }
+        logger.info(event, correlationId, logFields);
     }
 
     private static ObjectMapper defaultMapper() {

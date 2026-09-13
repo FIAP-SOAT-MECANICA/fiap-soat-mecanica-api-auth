@@ -5,3 +5,7 @@ jwt_secret_arn            = "arn:aws:secretsmanager:REGION:ACCOUNT:secret:fiap/p
 jwt_audience              = "fiap-soat-mecanica-api"
 private_subnet_ids        = ["subnet-REPLACE_ME"]
 lambda_security_group_ids = ["sg-REPLACE_ME"]
+
+# No AWS Academy Learner Lab, use o LabRole preexistente. Em uma conta normal,
+# mantenha esta variavel ausente para que o stack crie o papel de menor privilegio.
+# lambda_execution_role_arn = "arn:aws:iam::ACCOUNT_ID:role/LabRole"
