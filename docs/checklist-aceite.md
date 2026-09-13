@@ -33,5 +33,5 @@
 2. Mostre o workflow de deploy concluído e o endpoint publicado.
 3. Faça as chamadas de sucesso, CPF inválido e cliente não autorizado sem exibir dados reais.
 4. Use o token mascarado para uma rota protegida e mostre a rejeição sem token.
-5. Mostre log de API Gateway e Lambda pelo mesmo `x-correlation-id`, com campos JSON e sem CPF/token.
+5. Mostre o `requestId` do log do API Gateway e o mesmo valor em `apiGatewayRequestId` no log JSON da Lambda; use `x-correlation-id` na resposta e entre serviços, sem CPF/token nos logs.
 6. Mostre o diagrama e explique a separação entre Auth, aplicação, banco e infraestrutura compartilhada.

@@ -40,6 +40,23 @@ sequenceDiagram
 
 O endpoint é deliberadamente público, pois é a porta de emissão do token. As demais rotas sensíveis pertencem à API principal e devem validar o token; a Lambda não protege uma rota que ela não atende.
 
+## Componentes e responsabilidades
+
+```mermaid
+flowchart LR
+    C[Cliente] -->|POST /auth/cpf| G[API Gateway HTTP]
+    G -->|evento payload 2.0| L[Lambda Auth]
+    L -->|GetSecretValue| S[AWS Secrets Manager]
+    L -->|TLS / 5432| D[(PostgreSQL gerenciado)]
+    L -->|JWT HS256| A[API principal no Kubernetes]
+    G --> AG[Logs de acesso CloudWatch]
+    L --> LG[Logs JSON CloudWatch]
+    G -. requestId .-> AG
+    L -. apiGatewayRequestId .-> LG
+```
+
+O `requestId` do API Gateway é registrado pelo estágio e pela Lambda como `apiGatewayRequestId`. Assim, ele permite correlacionar os logs dos dois componentes. Quando o cliente envia `x-correlation-id`, a Lambda o devolve na resposta e registra esse identificador separadamente, para a correlação entre serviços.
+
 ## Contrato HTTP
 
 Consulte [openapi.yaml](openapi.yaml). O endpoint é `POST /auth/cpf`.
@@ -156,13 +173,14 @@ Ative nas configurações do repositório a proteção das branches `main` e `ho
 
 ## Observabilidade e privacidade
 
-A aplicação grava eventos JSON em stdout; Lambda os envia ao grupo CloudWatch. API Gateway também registra acesso JSON. Os eventos incluem `correlationId`, status e tipo de principal, mas não CPF, JWT, senha, segredo ou string de conexão. Use `x-correlation-id` no request e propague-o à API principal para correlacionar logs e traces do grupo.
+A aplicação grava eventos JSON em stdout; Lambda os envia ao grupo CloudWatch. API Gateway também registra acesso JSON. Os eventos incluem `correlationId`, status e tipo de principal, mas não CPF, JWT, senha, segredo ou string de conexão. Use `x-correlation-id` no request e propague-o à API principal para correlacionar logs e traces do grupo. Para cruzar o log de acesso do API Gateway com o log da Lambda, consulte `requestId` no primeiro e `apiGatewayRequestId` no segundo.
 
 ## Documentação e demonstração
 
 - [Contrato OpenAPI](openapi.yaml)
 - [Coleção Postman](docs/postman/auth-serverless.postman_collection.json)
 - [Decisão de arquitetura](docs/adr/0001-autenticacao-cpf-serverless.md)
+- [Contrato de integração com a API principal](docs/integracao-api-principal.md)
 - [Checklist de aceite e vídeo](docs/checklist-aceite.md)
 
 Para a demonstração: mostre CPF válido de cliente ativo retornando JWT; CPF inválido (`400`); inexistente/inativo (`401`); uma rota protegida aceitando esse JWT e rejeitando token ausente, expirado ou inválido; execução do pipeline; recursos implantados; e logs correlacionados. Nunca exponha token ou segredo real no vídeo.
