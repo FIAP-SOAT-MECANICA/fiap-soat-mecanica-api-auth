@@ -69,6 +69,13 @@ variable "lambda_security_group_ids" {
   type        = list(string)
 }
 
+variable "lambda_execution_role_arn" {
+  description = "ARN de um papel de execucao Lambda existente. Quando nulo, este stack cria um papel com permissoes minimas."
+  type        = string
+  default     = null
+  nullable    = true
+}
+
 variable "lambda_memory_size" {
   description = "Memoria da Lambda em MB."
   type        = number

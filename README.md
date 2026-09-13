@@ -169,6 +169,8 @@ Configure ambientes GitHub `homologation` e `production` e associe as variáveis
 
 O workflow não usa chaves AWS estáticas: [deploy.yml](.github/workflows/deploy.yml) solicita token OIDC e assume o papel definido. O papel de deploy e a trust policy OIDC são pré-requisitos da infraestrutura compartilhada.
 
+No AWS Academy Learner Lab, o IAM não permite criar o papel OIDC do GitHub nem um papel IAM comum. Para uma implantação de laboratório, execute o Terraform com as credenciais temporárias da sessão e informe `lambda_execution_role_arn` com o ARN do `LabRole` preexistente. Nesse modo o stack reutiliza o papel e não tenta gerenciar sua política. O workflow OIDC continua destinado à conta compartilhada final.
+
 Ative nas configurações do repositório a proteção das branches `main` e `homolog`: pull request obrigatório, ao menos uma aprovação, checks `CI / Testar e validar Terraform` obrigatórios, conversa resolvida e sem force push/deleção. Essa configuração é feita no GitHub e não pode ser garantida por um arquivo versionado.
 
 ## Observabilidade e privacidade

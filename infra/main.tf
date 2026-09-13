@@ -1,6 +1,7 @@
 locals {
-  resource_name = "${var.project_name}-${var.environment}"
-  lambda_logs   = "/aws/lambda/${local.resource_name}"
+  resource_name             = "${var.project_name}-${var.environment}"
+  lambda_logs               = "/aws/lambda/${local.resource_name}"
+  lambda_execution_role_arn = var.lambda_execution_role_arn != null ? var.lambda_execution_role_arn : aws_iam_role.lambda[0].arn
 }
 
 data "aws_partition" "current" {}
@@ -28,6 +29,8 @@ data "aws_iam_policy_document" "lambda_assume_role" {
 }
 
 resource "aws_iam_role" "lambda" {
+  count = var.lambda_execution_role_arn == null ? 1 : 0
+
   name               = "${local.resource_name}-lambda"
   assume_role_policy = data.aws_iam_policy_document.lambda_assume_role.json
 }
@@ -82,15 +85,17 @@ data "aws_iam_policy_document" "lambda_runtime" {
 }
 
 resource "aws_iam_role_policy" "lambda_runtime" {
+  count = var.lambda_execution_role_arn == null ? 1 : 0
+
   name   = "${local.resource_name}-runtime"
-  role   = aws_iam_role.lambda.id
+  role   = aws_iam_role.lambda[0].id
   policy = data.aws_iam_policy_document.lambda_runtime.json
 }
 
 resource "aws_lambda_function" "auth" {
   function_name    = local.resource_name
   description      = "Autenticacao de clientes por CPF para a oficina FIAP SOAT"
-  role             = aws_iam_role.lambda.arn
+  role             = local.lambda_execution_role_arn
   runtime          = "java21"
   handler          = "br.com.fiap.soat.mecanica.auth.api.AuthHandler::handleRequest"
   filename         = var.artifact_path
