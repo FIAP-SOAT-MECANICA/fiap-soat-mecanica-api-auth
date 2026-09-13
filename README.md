@@ -132,7 +132,7 @@ mvn clean verify
 
 O artefato para Lambda é `target/auth-lambda.jar`. Os testes unitários não acessam AWS nem banco. A fase `verify` também executa o JAR final em uma JVM separada: instancia o handler padrão, carrega os providers AWS/JDBC e emite e verifica um JWT com dados sintéticos. Não é necessário configurar credenciais para esses testes.
 
-O teste do JAR pode consultar um PostgreSQL local descartável usando `AUTH_TEST_DB_PORT`; veja as instruções e os resultados em [Revisão e execução local](docs/revisao-local.md). Para chamar o Secrets Manager real, a Lambda exige credenciais e conectividade AWS, além do banco.
+Opcionalmente, o teste do JAR pode consultar um PostgreSQL local descartável ao definir `AUTH_TEST_DB_PORT`; sem essa variável, ele usa um repositório em memória. Para chamar o Secrets Manager real, a Lambda exige credenciais e conectividade AWS, além do banco.
 
 ## Infraestrutura e deploy
 
@@ -182,6 +182,7 @@ A aplicação grava eventos JSON em stdout; Lambda os envia ao grupo CloudWatch.
 - [Contrato OpenAPI](openapi.yaml)
 - [Coleção Postman](docs/postman/auth-serverless.postman_collection.json)
 - [Decisão de arquitetura](docs/adr/0001-autenticacao-cpf-serverless.md)
+- [RFC da estratégia de autenticação](docs/rfc/0001-autenticacao-cliente-serverless.md)
 - [Contrato de integração com a API principal](docs/integracao-api-principal.md)
 - [Checklist de aceite e vídeo](docs/checklist-aceite.md)
 

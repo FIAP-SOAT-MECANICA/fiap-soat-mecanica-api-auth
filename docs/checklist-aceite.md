@@ -25,7 +25,7 @@
 - [ ] O papel OIDC do GitHub permite somente o repositório/ambiente esperado.
 - [ ] O workflow CI passa em pull request; merge em `homolog` e `main` executa deploy nos ambientes correspondentes.
 - [ ] Proteção de `main` e `homolog` exige pull request e checks.
-- [ ] README, OpenAPI, coleção Postman, ADR e diagrama estão atualizados.
+- [ ] README, OpenAPI, coleção Postman, RFC, ADR e diagramas estão atualizados.
 
 ## Evidências para o vídeo
 
