@@ -1,5 +1,5 @@
 terraform {
-  required_version = ">= 1.10.0"
+  required_version = ">= 1.14.5, < 1.16.0"
 
   # O backend e configurado pelo CI/CD ou por backend.hcl.example.
   # O bucket de state deve existir antes do primeiro terraform init.
