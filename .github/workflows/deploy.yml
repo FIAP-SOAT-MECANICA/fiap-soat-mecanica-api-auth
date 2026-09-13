@@ -48,6 +48,8 @@ jobs:
 
       - name: Configurar Terraform
         uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "1.15.8"
 
       - name: Inicializar state remoto
         run: >-

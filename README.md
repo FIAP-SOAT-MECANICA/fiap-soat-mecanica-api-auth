@@ -136,7 +136,7 @@ Opcionalmente, o teste do JAR pode consultar um PostgreSQL local descartável ao
 
 ## Infraestrutura e deploy
 
-O Terraform está em [infra](infra) e provisiona Lambda, API Gateway, logs, papel IAM e permissões. Requer Terraform `>= 1.14.5, < 1.16.0`, intervalo acordado pelo grupo e compatível com o locking nativo do backend S3. Ele recebe subnets, security groups e ARNs de segredos criados ou compartilhados por infraestrutura do grupo.
+O Terraform está em [infra](infra) e provisiona Lambda, API Gateway, logs, papel IAM e permissões. Requer Terraform `>= 1.14.5, < 1.16.0`, intervalo acordado pelo grupo e compatível com o locking nativo do backend S3. As pipelines fixam a versão `1.15.8`, dentro desse intervalo. Ele recebe subnets, security groups e ARNs de segredos criados ou compartilhados por infraestrutura do grupo.
 
 1. O responsável da infraestrutura cria uma vez o bucket S3 de state e, se aplicável, suas permissões/KMS. O bucket não é criado por este stack para evitar que o backend dependa de si próprio.
 2. Copie `infra/backend.hcl.example` e `infra/terraform.tfvars.example` para arquivos locais ignorados e preencha os valores do ambiente.
