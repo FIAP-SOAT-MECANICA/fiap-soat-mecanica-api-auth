@@ -1,31 +1,40 @@
 # Checklist de aceite e demonstração
 
+Os itens marcados nesta seção foram comprovados localmente por testes automatizados ou validações de código. Os itens que dependem de ambiente integrado, infraestrutura compartilhada ou API principal permanecem abertos até a demonstração final.
+
 ## Função de autenticação
 
-- [ ] CPF válido de um cliente `ATIVO` retorna `200`, `Bearer` e JWT verificável.
-- [ ] CPF com máscara é aceito e normalizado.
-- [ ] CPF com tamanho, dígito verificador ou sequência repetida inválidos retorna `400 INVALID_CPF`.
-- [ ] CPF de cliente inexistente retorna `401 ACCESS_DENIED`.
-- [ ] CPF de cliente `INATIVO` retorna `401 ACCESS_DENIED`.
-- [ ] Banco indisponível retorna `503 CUSTOMER_DIRECTORY_UNAVAILABLE`, sem token.
-- [ ] A resposta possui `Cache-Control: no-store` e `x-correlation-id`.
+- [x] CPF válido de um cliente `ATIVO` retorna `200`, `Bearer` e JWT verificável.
+- [x] CPF com máscara é aceito e normalizado.
+- [x] CPF com tamanho, dígito verificador ou sequência repetida inválidos retorna `400 INVALID_CPF`.
+- [x] CPF de cliente inexistente retorna `401 ACCESS_DENIED`.
+- [x] CPF de cliente `INATIVO` retorna `401 ACCESS_DENIED`.
+- [x] Banco indisponível retorna `503 CUSTOMER_DIRECTORY_UNAVAILABLE`, sem token.
+- [x] A resposta possui `Cache-Control: no-store` e `x-correlation-id`.
 
 ## JWT e proteção integrada
 
-- [ ] Token contém UUID em `sub`, `principal_type=CLIENTE`, `iss`, `aud`, `iat`, `exp` e `jti`.
+- [x] Token contém UUID em `sub`, `principal_type=CLIENTE`, `iss`, `aud`, `iat`, `exp` e `jti`.
 - [ ] Rota de cliente na API principal aceita token válido e devolve/propaga a correlação.
 - [ ] Mesma rota rejeita token ausente, assinatura alterada, expirado, issuer/audience incorretos e `principal_type` inadequado.
 - [ ] Nenhuma rota sensível da aplicação permanece pública por configuração acidental.
 
 ## Infraestrutura, pipeline e documentação
 
-- [ ] `mvn verify` passa.
-- [ ] `terraform -chdir=infra fmt -check -recursive` e `terraform -chdir=infra validate` passam.
+- [x] `mvn verify` passa.
+- [x] `terraform -chdir=infra fmt -check -recursive` e `terraform -chdir=infra validate` passam.
 - [ ] O bucket S3 de state existe, está cifrado e usa uma chave por ambiente.
 - [ ] O papel OIDC do GitHub permite somente o repositório/ambiente esperado.
 - [ ] O workflow CI passa em pull request; merge em `homolog` e `main` executa deploy nos ambientes correspondentes.
 - [ ] Proteção de `main` e `homolog` exige pull request e checks.
-- [ ] README, OpenAPI, coleção Postman, RFC, ADR e diagramas estão atualizados.
+- [x] README, OpenAPI, coleção Postman, RFC, ADR e diagramas estão atualizados.
+
+## Evidências locais registradas em 12/09/2026
+
+- `AuthHandlerTest` valida o contrato HTTP, CPF com máscara, CPF inválido, cliente inativo, falha de diretório, `Cache-Control` e correlação.
+- `AuthenticateCustomerUseCaseTest` cobre cliente ativo, inexistente e inativo; `JwtTokenIssuerTest` verifica o contrato do JWT.
+- `PackagedLambdaIT` executa o JAR final em uma JVM separada e valida a emissão e leitura do JWT sem imprimir token ou segredo.
+- A pipeline de CI executa os mesmos comandos de Maven e Terraform. A evidência do workflow em Pull Request continua pendente até a PR desta branch ser aberta e concluída.
 
 ## Evidências para o vídeo
 
