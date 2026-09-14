@@ -15,8 +15,8 @@ jobs:
     env:
       DEPLOY_ENVIRONMENT: ${{ github.ref_name == 'main' && 'production' || 'homologation' }}
       TF_STATE_KEY: auth/${{ github.ref_name == 'main' && 'production' || 'homologation' }}/terraform.tfstate
-      AWS_REGION: ${{ vars.TF_STATE_REGION }}
-      TF_VAR_aws_region: ${{ vars.TF_STATE_REGION }}
+      AWS_REGION: ${{ vars.AWS_REGION }}
+      TF_VAR_aws_region: ${{ vars.AWS_REGION }}
       TF_VAR_environment: ${{ github.ref_name == 'main' && 'production' || 'homologation' }}
       TF_VAR_db_secret_arn: ${{ secrets.DB_SECRET_ARN }}
       TF_VAR_jwt_secret_arn: ${{ secrets.JWT_SECRET_ARN }}
@@ -46,7 +46,7 @@ jobs:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-session-token: ${{ secrets.AWS_SESSION_TOKEN }}
-          aws-region: ${{ vars.TF_STATE_REGION }}
+          aws-region: ${{ vars.AWS_REGION }}
 
       - name: Configurar Terraform
         uses: hashicorp/setup-terraform@v3
@@ -58,7 +58,7 @@ jobs:
           terraform -chdir=infra init
           -backend-config="bucket=${{ secrets.TF_STATE_BUCKET }}"
           -backend-config="key=${{ env.TF_STATE_KEY }}"
-          -backend-config="region=${{ vars.TF_STATE_REGION }}"
+          -backend-config="region=${{ vars.AWS_REGION }}"
           -backend-config="encrypt=true"
           -backend-config="use_lockfile=true"
 

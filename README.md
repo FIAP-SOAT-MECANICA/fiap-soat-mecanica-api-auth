@@ -157,7 +157,7 @@ Configure ambientes GitHub `homologation` e `production` e associe as variáveis
 
 | Tipo | Nome | Uso |
 | --- | --- | --- |
-| Variable | `TF_STATE_REGION` | Região AWS e do state remoto |
+| Variable | `AWS_REGION` | Região AWS e do state remoto |
 | Variable | `JWT_AUDIENCE` | Audience exigida pelas APIs |
 | Variable | `PRIVATE_SUBNET_IDS_JSON` | Lista JSON de subnets privadas |
 | Variable | `LAMBDA_SECURITY_GROUP_IDS_JSON` | Lista JSON de security groups da Lambda |
