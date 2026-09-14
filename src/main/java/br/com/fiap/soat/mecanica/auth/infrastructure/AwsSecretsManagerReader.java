@@ -25,7 +25,9 @@ public final class AwsSecretsManagerReader implements SecretReader {
 
     private synchronized SecretsManagerClient client() {
         if (client == null) {
-            client = SecretsManagerClient.create();
+            client = SecretsManagerClient.builder().overrideConfiguration(config -> config
+                    .apiCallTimeout(java.time.Duration.ofSeconds(4))
+                    .apiCallAttemptTimeout(java.time.Duration.ofSeconds(2))).build();
         }
         return client;
     }

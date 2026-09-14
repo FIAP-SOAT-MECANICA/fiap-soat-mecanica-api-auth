@@ -1,6 +1,7 @@
 name: CI
 
 on:
+  workflow_call:
   pull_request:
     branches: [main, homolog]
   push:
@@ -13,6 +14,19 @@ jobs:
   validate:
     name: Testar e validar Terraform
     runs-on: ubuntu-latest
+    timeout-minutes: 20
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: auth_review
+          POSTGRES_PASSWORD: auth_fixture_only
+          POSTGRES_DB: auth_review
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U auth_review -d auth_review"
+          --health-interval 5s --health-timeout 5s --health-retries 12
 
     steps:
       - name: Obter codigo
@@ -25,8 +39,24 @@ jobs:
           java-version: "21"
           cache: maven
 
-      - name: Executar testes e gerar JAR da Lambda
-        run: mvn --batch-mode verify
+      - name: Criar fixture descartavel do contrato clientes
+        env:
+          PGPASSWORD: auth_fixture_only
+        run: psql -h 127.0.0.1 -U auth_review -d auth_review -v ON_ERROR_STOP=1 -f src/test/resources/cliente-fixture.sql
+
+      - name: Executar testes e JAR contra PostgreSQL
+        env:
+          AUTH_TEST_DB_PORT: '5432'
+          AUTH_TEST_DB_PASSWORD: auth_fixture_only
+        run: mvn --batch-mode clean verify
+
+      - name: Testar preparacao do deploy sem AWS
+        run: python3 -m unittest discover -s scripts -p 'test_*.py' -v
+
+      - name: Auditar dependencias runtime no OSV
+        run: |
+          mvn --batch-mode dependency:list -DincludeScope=runtime -DoutputFile=target/dependency-audit.txt
+          python3 scripts/audit_dependencies.py target/dependency-audit.txt
 
       - name: Configurar Terraform
         uses: hashicorp/setup-terraform@v3
@@ -37,7 +67,10 @@ jobs:
         run: terraform -chdir=infra fmt -check -recursive
 
       - name: Inicializar providers sem backend remoto
-        run: terraform -chdir=infra init -backend=false
+        run: terraform -chdir=infra init -backend=false -lockfile=readonly
 
       - name: Validar configuracao Terraform
         run: terraform -chdir=infra validate
+
+      - name: Testar planos Terraform sem credenciais
+        run: terraform -chdir=infra test

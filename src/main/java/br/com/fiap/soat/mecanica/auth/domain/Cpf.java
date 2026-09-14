@@ -13,7 +13,11 @@ public record Cpf(String value) {
         if (value == null || value.isBlank()) {
             throw new InvalidCpfException();
         }
-        return value.replaceAll("\\D", "");
+        value = value.trim();
+        if (!value.matches("[0-9]{11}|[0-9]{3}\\.[0-9]{3}\\.[0-9]{3}-[0-9]{2}")) {
+            throw new InvalidCpfException();
+        }
+        return value.replace(".", "").replace("-", "");
     }
 
     private static boolean isValid(String cpf) {

@@ -23,10 +23,17 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class AuthHandlerTest {
+    @Test
+    void rejectsOversizedBodyBeforeInitializingServices() {
+        var handler = new AuthHandler(() -> { throw new AssertionError("Servico nao deve iniciar"); }, new ObjectMapper());
+        assertEquals(400, handler.handleRequest(event(" ".repeat(4096) + "{}", null), null).getStatusCode());
+    }
+
     @ParameterizedTest
     @NullAndEmptySource
     @ValueSource(strings = {" ", "null", "[]", "{", "{\"cpf\":52998224725}",
-            "{\"cpf\":\"52998224725\",\"extra\":true}", "{\"cpf\":\"52998224725\"} {}"})
+            "{\"cpf\":\"52998224725\",\"extra\":true}", "{\"cpf\":\"52998224725\"} {}",
+            "{\"cpf\":\"00000000000\",\"cpf\":\"52998224725\"}"})
     void rejectsMalformedRequestsBeforeInitializingServices(String body) {
         AuthHandler handler = new AuthHandler(() -> {
             throw new AssertionError("Serviços não devem inicializar para requisição inválida");

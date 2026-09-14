@@ -1,11 +1,15 @@
 aws_region                = "us-east-1"
 environment               = "production"
+vpc_id                    = "vpc-REPLACE_ME"
 db_secret_arn             = "arn:aws:secretsmanager:REGION:ACCOUNT:secret:fiap/production/database"
-jwt_secret_arn            = "arn:aws:secretsmanager:REGION:ACCOUNT:secret:fiap/production/jwt"
+# Opcional: null cria chave e segredo JWT no proprio Auth.
+jwt_secret_arn            = null
 jwt_audience              = "fiap-soat-mecanica-api"
-private_subnet_ids        = ["subnet-REPLACE_ME"]
+private_subnet_ids        = ["subnet-REPLACE_A", "subnet-REPLACE_B"]
 lambda_security_group_ids = ["sg-REPLACE_ME"]
 
 # No AWS Academy Learner Lab, use o LabRole preexistente. Em uma conta normal,
 # mantenha esta variavel ausente para que o stack crie o papel de menor privilegio.
 # lambda_execution_role_arn = "arn:aws:iam::ACCOUNT_ID:role/LabRole"
+# O deploy automatizado descobre esses valores sem edicao deste arquivo.
+# create_secrets_endpoint = false # Somente quando ja existe endpoint privado acessivel.

@@ -2,6 +2,7 @@ locals {
   resource_name             = "${var.project_name}-${var.environment}"
   lambda_logs               = "/aws/lambda/${local.resource_name}"
   lambda_execution_role_arn = var.lambda_execution_role_arn != null ? var.lambda_execution_role_arn : aws_iam_role.lambda[0].arn
+  jwt_secret_arn            = var.jwt_secret_arn != null ? var.jwt_secret_arn : aws_secretsmanager_secret.jwt[0].arn
 }
 
 data "aws_partition" "current" {}
@@ -52,7 +53,7 @@ data "aws_iam_policy_document" "lambda_runtime" {
     actions = ["secretsmanager:GetSecretValue"]
     resources = [
       var.db_secret_arn,
-      var.jwt_secret_arn
+      local.jwt_secret_arn
     ]
   }
 
@@ -111,7 +112,7 @@ resource "aws_lambda_function" "auth" {
   environment {
     variables = {
       DB_SECRET_ARN   = var.db_secret_arn
-      JWT_SECRET_ARN  = var.jwt_secret_arn
+      JWT_SECRET_ARN  = local.jwt_secret_arn
       JWT_AUDIENCE    = var.jwt_audience
       JWT_ISSUER      = var.jwt_issuer
       JWT_TTL_SECONDS = tostring(var.jwt_ttl_seconds)
@@ -123,7 +124,7 @@ resource "aws_lambda_function" "auth" {
     log_group  = aws_cloudwatch_log_group.lambda.name
   }
 
-  depends_on = [aws_iam_role_policy.lambda_runtime]
+  depends_on = [aws_iam_role_policy.lambda_runtime, aws_secretsmanager_secret_version.jwt, aws_vpc_endpoint.secrets]
 }
 
 resource "aws_apigatewayv2_api" "auth" {
@@ -138,6 +139,7 @@ resource "aws_apigatewayv2_integration" "auth" {
   integration_uri        = aws_lambda_function.auth.invoke_arn
   integration_method     = "POST"
   payload_format_version = "2.0"
+  timeout_milliseconds   = 30000
 }
 
 resource "aws_apigatewayv2_route" "authenticate_customer" {
@@ -150,6 +152,11 @@ resource "aws_apigatewayv2_stage" "default" {
   api_id      = aws_apigatewayv2_api.auth.id
   name        = "$default"
   auto_deploy = true
+
+  default_route_settings {
+    throttling_burst_limit = 20
+    throttling_rate_limit  = 10
+  }
 
   access_log_settings {
     destination_arn = aws_cloudwatch_log_group.api_gateway.arn
@@ -171,5 +178,5 @@ resource "aws_lambda_permission" "allow_api_gateway" {
   action        = "lambda:InvokeFunction"
   function_name = aws_lambda_function.auth.function_name
   principal     = "apigateway.amazonaws.com"
-  source_arn    = "${aws_apigatewayv2_api.auth.execution_arn}/*/*"
+  source_arn    = "${aws_apigatewayv2_api.auth.execution_arn}/*/POST/auth/cpf"
 }
