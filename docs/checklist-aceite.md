@@ -24,7 +24,7 @@ Os itens marcados nesta seção foram comprovados localmente por testes automati
 - [x] `mvn verify` passa.
 - [x] `terraform -chdir=infra fmt -check -recursive` e `terraform -chdir=infra validate` passam.
 - [ ] O bucket S3 de state existe, está cifrado e usa uma chave por ambiente.
-- [ ] O papel OIDC do GitHub permite somente o repositório/ambiente esperado.
+- [ ] Os três secrets temporários AWS Academy, a região e o ARN do `LabRole` estão configurados no ambiente GitHub antes do deploy.
 - [ ] O workflow CI passa em pull request; merge em `homolog` e `main` executa deploy nos ambientes correspondentes.
 - [ ] Proteção de `main` e `homolog` exige pull request e checks.
 - [x] README, OpenAPI, coleção Postman, RFC, ADR e diagramas estão atualizados.

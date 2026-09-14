@@ -26,4 +26,4 @@ A Lambda fica em VPC privada, recebe somente os ARNs dos segredos e usa IAM de m
 
 - Reaproveitar o login e-mail/senha da aplicação: não atende ao fluxo CPF exigido.
 - Incluir CPF no token: amplia exposição de dado pessoal sem necessidade para autorização.
-- Usar credenciais estáticas AWS no GitHub Actions: OIDC reduz o material secreto de CI/CD.
+- Usar OIDC do GitHub Actions no AWS Academy: o Learner Lab não permite criar a role IAM necessária. Para a sessão temporária de demonstração, a pipeline usa as três credenciais temporárias armazenadas como secrets do ambiente GitHub.
