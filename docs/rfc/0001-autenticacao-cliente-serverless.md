@@ -74,9 +74,9 @@ Rejeitada. O CPF é dado pessoal e não é necessário para autorização. O UUI
 
 Rejeitada. A verificação local da assinatura pela API principal reduz latência e dependência síncrona da Lambda. A Lambda fica responsável apenas pela emissão do token.
 
-### Usar chaves AWS estáticas na pipeline
+### Usar credenciais temporárias AWS Academy na pipeline
 
-Rejeitada para a conta final. O workflow usa OIDC do GitHub Actions e um papel AWS restrito. No Learner Lab, onde o IAM é limitado, o Terraform reutiliza temporariamente o `LabRole` existente apenas para testes manuais.
+Aceita para a demonstração. O Learner Lab não permite criar a role IAM exigida pelo OIDC do GitHub. A pipeline recebe `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY` e `AWS_SESSION_TOKEN` como secrets de ambiente, válidos somente durante a sessão. O Terraform reutiliza o `LabRole` existente pelo respectivo ARN e não tenta criar ou alterar papéis IAM.
 
 ### Usar token assimétrico
 
@@ -86,7 +86,7 @@ Não adotada nesta fase. JWT assimétrico eliminaria o compartilhamento da chave
 
 Esta decisão cria uma separação explícita entre autenticação de cliente e autenticação interna. A API principal precisa implementar um caminho de autorização para `CLIENTE`; o repositório de banco precisa disponibilizar cliente ativo, segredo e conectividade; a infraestrutura Kubernetes precisa fornecer a rede privada e os grupos de segurança compatíveis.
 
-O repositório Auth mantém a Lambda, o contrato OpenAPI, o Terraform de Lambda/API Gateway, a pipeline e a documentação desta decisão. A infraestrutura compartilhada mantém VPC, sub-redes, state remoto, segredos, banco e o papel OIDC da conta definitiva.
+O repositório Auth mantém a Lambda, o contrato OpenAPI, o Terraform de Lambda/API Gateway, a pipeline e a documentação desta decisão. A infraestrutura compartilhada mantém VPC, sub-redes, state remoto, segredos, banco e o `LabRole` da conta temporária de demonstração.
 
 ## 8. Estratégia de entrega e validação
 

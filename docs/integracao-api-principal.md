@@ -40,4 +40,4 @@ O segredo JWT deve ser igual nos dois componentes, mas seu valor não pode entra
 
 ## Pendência externa para implantação
 
-O código deste repositório já recebe os ARNs de segredos, subnets privadas e security group por variáveis Terraform. Antes do primeiro deploy, a infraestrutura precisa fornecer esses valores, o bucket de state e o papel OIDC usado pelo GitHub Actions. Nenhum deles deve ser substituído por valores de conta pessoal no código.
+O código deste repositório já recebe os ARNs de segredos, subnets privadas e security group por variáveis Terraform. Antes do primeiro deploy, a infraestrutura precisa fornecer esses valores, o bucket de state, o ARN do `LabRole` e as credenciais temporárias da sessão AWS Academy configuradas como secrets do GitHub Actions. Nenhum deles deve ser substituído por valores de conta pessoal no código.

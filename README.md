@@ -11,7 +11,7 @@ Este é o repositório exclusivo da Function Serverless de autenticação exigid
 - PostgreSQL via JDBC
 - AWS Secrets Manager
 - JJWT com HMAC SHA-256
-- Terraform e GitHub Actions com OIDC para AWS
+- Terraform e GitHub Actions para AWS Academy
 - CloudWatch Logs em JSON
 
 ## Fluxo
@@ -157,19 +157,22 @@ Configure ambientes GitHub `homologation` e `production` e associe as variáveis
 
 | Tipo | Nome | Uso |
 | --- | --- | --- |
-| Variable | `AWS_REGION` | Região AWS |
+| Variable | `TF_STATE_REGION` | Região AWS e do state remoto |
 | Variable | `JWT_AUDIENCE` | Audience exigida pelas APIs |
 | Variable | `PRIVATE_SUBNET_IDS_JSON` | Lista JSON de subnets privadas |
 | Variable | `LAMBDA_SECURITY_GROUP_IDS_JSON` | Lista JSON de security groups da Lambda |
 | Variable | `KMS_KEY_ARNS_JSON` | Lista JSON de chaves KMS, ou `[]` |
-| Secret | `AWS_DEPLOY_ROLE_ARN` | Papel AWS confiado pelo OIDC do GitHub |
+| Variable | `LAMBDA_EXECUTION_ROLE_ARN` | ARN do `LabRole` existente na conta AWS Academy |
+| Secret | `AWS_ACCESS_KEY_ID` | Access key temporária da sessão do AWS Academy |
+| Secret | `AWS_SECRET_ACCESS_KEY` | Secret access key temporária da sessão do AWS Academy |
+| Secret | `AWS_SESSION_TOKEN` | Session token temporário da sessão do AWS Academy |
 | Secret | `TF_STATE_BUCKET` | Bucket S3 de state já existente |
 | Secret | `DB_SECRET_ARN` | ARN do segredo do banco |
 | Secret | `JWT_SECRET_ARN` | ARN do segredo da chave JWT |
 
-O workflow não usa chaves AWS estáticas: [deploy.yml](.github/workflows/deploy.yml) solicita token OIDC e assume o papel definido. O papel de deploy e a trust policy OIDC são pré-requisitos da infraestrutura compartilhada.
+O [deploy.yml](.github/workflows/deploy.yml) usa as três credenciais temporárias da sessão AWS Academy. Elas expiram ao fim da sessão; antes de cada execução de deploy, atualize os três secrets nos ambientes GitHub sem compartilhá-los no código, em issues ou no grupo. O workflow reutiliza o `LabRole` preexistente por meio de `LAMBDA_EXECUTION_ROLE_ARN`, impedindo o Terraform de tentar criar um papel IAM que o Learner Lab não autoriza.
 
-No AWS Academy Learner Lab, o IAM não permite criar o papel OIDC do GitHub nem um papel IAM comum. Para uma implantação de laboratório, execute o Terraform com as credenciais temporárias da sessão e informe `lambda_execution_role_arn` com o ARN do `LabRole` preexistente. Nesse modo o stack reutiliza o papel e não tenta gerenciar sua política. O workflow OIDC continua destinado à conta compartilhada final.
+Para uma conta AWS fora do Learner Lab, o grupo pode migrar para OIDC em revisão futura. Essa migração exige uma role IAM e um provedor OIDC que o Lab não permite criar.
 
 Ative nas configurações do repositório a proteção das branches `main` e `homolog`: pull request obrigatório, ao menos uma aprovação, checks `CI / Testar e validar Terraform` obrigatórios, conversa resolvida e sem force push/deleção. Essa configuração é feita no GitHub e não pode ser garantida por um arquivo versionado.
 
