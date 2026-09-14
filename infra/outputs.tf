@@ -12,3 +12,16 @@ output "lambda_function_name" {
   description = "Nome da funcao Lambda provisionada."
   value       = aws_lambda_function.auth.function_name
 }
+
+output "jwt_secret_arn" {
+  description = "ARN (nao o valor) da chave que a API deve consumir."
+  value       = local.jwt_secret_arn
+}
+
+output "jwt_issuer" {
+  value = var.jwt_issuer
+}
+
+output "jwt_audience" {
+  value = var.jwt_audience
+}

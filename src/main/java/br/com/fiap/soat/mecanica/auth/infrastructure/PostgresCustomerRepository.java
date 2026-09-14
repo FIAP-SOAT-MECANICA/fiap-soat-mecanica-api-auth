@@ -32,6 +32,7 @@ public final class PostgresCustomerRepository implements CustomerRepository {
         try (Connection connection = DriverManager.getConnection(config.jdbcUrl(), config.username(), config.password());
              PreparedStatement statement = connection.prepareStatement(FIND_CUSTOMER)) {
             statement.setString(1, cpf.value());
+            statement.setQueryTimeout(3);
             try (ResultSet result = statement.executeQuery()) {
                 if (!result.next()) {
                     return Optional.empty();

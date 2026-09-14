@@ -26,6 +26,10 @@ public final class JwtTokenIssuer implements TokenIssuer {
     }
 
     JwtTokenIssuer(String base64Secret, String issuer, String audience, Duration ttl, Clock clock) {
+        if (issuer == null || issuer.isBlank() || audience == null || audience.isBlank()
+                || ttl == null || ttl.toSeconds() < 300 || ttl.toSeconds() > 86400) {
+            throw new IllegalArgumentException("Configuracao JWT invalida");
+        }
         this.key = Keys.hmacShaKeyFor(Decoders.BASE64.decode(base64Secret));
         this.issuer = issuer;
         this.audience = audience;

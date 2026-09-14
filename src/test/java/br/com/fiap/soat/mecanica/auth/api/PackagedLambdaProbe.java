@@ -44,7 +44,8 @@ public final class PackagedLambdaProbe {
         String port = System.getenv("AUTH_TEST_DB_PORT");
         DatabaseConfig database = null;
         if (port != null) {
-            database = new DatabaseConfig("127.0.0.1", Integer.parseInt(port), "auth_review", "auth_review", "");
+            database = new DatabaseConfig("127.0.0.1", Integer.parseInt(port), "auth_review", "auth_review",
+                    System.getenv().getOrDefault("AUTH_TEST_DB_PASSWORD", ""), "disable");
             repository = new PostgresCustomerRepository(database);
         }
         var issuer = new JwtTokenIssuer(SECRET, "smoke-auth", "smoke-api", Duration.ofHours(1));
@@ -64,6 +65,12 @@ public final class PackagedLambdaProbe {
                 "Validade incorreta");
 
         if (database != null) {
+            var tlsOnlyDatabase = new DatabaseConfig(database.host(), database.port(), database.database(),
+                    database.username(), database.password());
+            var tlsHandler = new AuthHandler(() -> new AuthenticateCustomerUseCase(
+                    new PostgresCustomerRepository(tlsOnlyDatabase), issuer), mapper);
+            require(tlsHandler.handleRequest(request, null).getStatusCode() == 503,
+                    "Conexao de producao nao deve fazer fallback para PostgreSQL sem TLS");
             request.setBody("{\"cpf\":\"12345678909\"}");
             require(handler.handleRequest(request, null).getStatusCode() == 401, "Cliente ausente deve ser negado");
             // Altera somente a fixture dedicada criada pelo operador no banco auth_review.

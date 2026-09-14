@@ -4,6 +4,9 @@ target/
 *.log
 hs_err_pid*
 replay_pid*
+__pycache__/
+*.pyc
+tfplan
 
 # Local configuration and credentials
 .env

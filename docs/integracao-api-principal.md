@@ -22,7 +22,7 @@ O filtro atual da API principal carrega um `UserDetails` pelo assunto do token. 
 
 | Dado | Responsável por fornecer | Consumidores |
 | --- | --- | --- |
-| Segredo JWT HMAC Base64 | Infraestrutura/AWS | Auth e API principal |
+| Segredo JWT HMAC Base64 | Auth gera por padrão; ou grupo fornece `JWT_SECRET`/segredo externo | Auth e API principal |
 | `JWT_ISSUER` | Auth (valor padrão documentado) | Auth e API principal |
 | `JWT_AUDIENCE` | Grupo | Auth e API principal |
 | URL da Auth | Terraform deste repositório (`authenticate_customer_url`) | Cliente/demonstração |
@@ -40,4 +40,10 @@ O segredo JWT deve ser igual nos dois componentes, mas seu valor não pode entra
 
 ## Pendência externa para implantação
 
-O código deste repositório já recebe os ARNs de segredos, subnets privadas e security group por variáveis Terraform. Antes do primeiro deploy, a infraestrutura precisa fornecer esses valores, o bucket de state, o ARN do `LabRole` e as credenciais temporárias da sessão AWS Academy configuradas como secrets do GitHub Actions. Nenhum deles deve ser substituído por valores de conta pessoal no código.
+O preflight do Auth descobre RDS `mecanica-db-prod`, segredo `mecanica-db-credentials`, VPC/subnets, SG autorizado e `LabRole` usando a conta da sessão. Basta disponibilizar as credenciais temporárias e o bucket compartilhado já configurado na organização, desde que os recursos de DB/rede existam. O Terraform prepara o segredo JWT e o endpoint privado do Secrets Manager quando não compartilhados.
+
+O segredo DB precisa seguir o JSON `host`, `port` inteiro, `dbname`, `username`, `password`. As migrations e clientes são responsabilidade da aplicação; o Auth só faz SELECT, sem criar tabela, inserir cliente ou modificar banco do grupo. Homologação e produção têm recursos/state Auth separados; o banco atual do grupo é compartilhado e isso não cria isolamento de dados entre ambientes.
+
+Após deploy, `jwt_secret_arn` é o ARN que a API deve usar para obter o campo JSON `secret`. Esse campo já é base64: decodifique uma única vez ao construir a chave HS256. Se o grupo fornecer `JWT_SECRET` ao Auth, a API deve receber exatamente o mesmo valor. Não grave o segredo em manifesto versionado.
+
+Evidência da pendência: na API `79f6b3f`, `JwtAuthenticationFilter` chama `userDetailsService.loadUserByUsername` com o `sub`; `JwtService` trata esse valor como e-mail. É necessário validar CLIENTE e autorizar somente suas rotas/dados, sem converter seu UUID em identidade de funcionário. Esse ajuste não pode ser substituído por credenciais AWS e não foi realizado pelo Auth.

@@ -2,7 +2,7 @@ openapi: 3.0.3
 info:
   title: FIAP SOAT Mecânica — Auth Serverless
   version: 1.0.0
-  description: Autenticação de clientes por CPF e emissão de JWT para APIs protegidas.
+  description: Autenticação de clientes por CPF e emissão de JWT para APIs protegidas. Corpo limitado a 4096 caracteres; propriedades JSON duplicadas não são aceitas.
 servers:
   - url: https://{apiId}.execute-api.{region}.amazonaws.com
     variables:
@@ -15,6 +15,7 @@ paths:
     post:
       summary: Autentica um cliente ativo pelo CPF
       operationId: authenticateCustomerByCpf
+      security: []
       parameters:
         - $ref: '#/components/parameters/CorrelationId'
       requestBody:
@@ -41,6 +42,14 @@ paths:
                 $ref: '#/components/schemas/ErrorResponse'
         '401':
           description: Cliente ausente ou sem permissão de autenticar
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '429':
+          description: Limite de requisicoes do API Gateway excedido; resposta gerenciada pela AWS.
+        '500':
+          description: Falha interna ou configuracao indisponivel, sem detalhes sensiveis.
           content:
             application/json:
               schema:
@@ -75,6 +84,7 @@ components:
         cpf:
           type: string
           example: '529.982.247-25'
+          description: Onze digitos ASCII ou mascara NNN.NNN.NNN-NN. Espacos externos sao removidos; letras e separadores arbitrarios sao rejeitados.
     TokenResponse:
       type: object
       required: [accessToken, tokenType, expiresIn]

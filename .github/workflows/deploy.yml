@@ -3,28 +3,39 @@ name: Deploy AWS
 on:
   push:
     branches: [main, homolog]
+  workflow_dispatch:
 
 permissions:
   contents: read
 
+concurrency:
+  # Os ambientes podem compartilhar o endpoint privado da mesma VPC.
+  group: auth-deploy
+  cancel-in-progress: false
+
 jobs:
+  verify:
+    if: github.ref_name == 'main' || github.ref_name == 'homolog'
+    uses: ./.github/workflows/ci.yml
+
   deploy:
     name: Implantar Lambda e API Gateway
+    needs: verify
     runs-on: ubuntu-latest
+    timeout-minutes: 35
     environment: ${{ github.ref_name == 'main' && 'production' || 'homologation' }}
     env:
       DEPLOY_ENVIRONMENT: ${{ github.ref_name == 'main' && 'production' || 'homologation' }}
-      TF_STATE_KEY: auth/${{ github.ref_name == 'main' && 'production' || 'homologation' }}/terraform.tfstate
-      AWS_REGION: ${{ vars.TF_STATE_REGION }}
-      TF_VAR_aws_region: ${{ vars.TF_STATE_REGION }}
-      TF_VAR_environment: ${{ github.ref_name == 'main' && 'production' || 'homologation' }}
-      TF_VAR_db_secret_arn: ${{ secrets.DB_SECRET_ARN }}
-      TF_VAR_jwt_secret_arn: ${{ secrets.JWT_SECRET_ARN }}
-      TF_VAR_jwt_audience: ${{ vars.JWT_AUDIENCE }}
-      TF_VAR_private_subnet_ids: ${{ vars.PRIVATE_SUBNET_IDS_JSON }}
-      TF_VAR_lambda_security_group_ids: ${{ vars.LAMBDA_SECURITY_GROUP_IDS_JSON }}
-      TF_VAR_kms_key_arns: ${{ vars.KMS_KEY_ARNS_JSON }}
-      TF_VAR_lambda_execution_role_arn: ${{ vars.LAMBDA_EXECUTION_ROLE_ARN }}
+      AWS_REGION: ${{ vars.AWS_REGION || vars.TF_STATE_REGION || 'us-east-1' }}
+      TF_STATE_REGION: ${{ vars.TF_STATE_REGION || vars.AWS_REGION || 'us-east-1' }}
+      TF_STATE_BUCKET: ${{ vars.TF_STATE_BUCKET }}
+      RDS_INSTANCE_IDENTIFIER: ${{ vars.RDS_INSTANCE_IDENTIFIER }}
+      ALLOWED_SG_ID: ${{ vars.ALLOWED_SG_ID }}
+      DB_SECRET_ARN: ${{ vars.DB_SECRET_ARN || secrets.DB_SECRET_ARN }}
+      JWT_SECRET_ARN: ${{ vars.JWT_SECRET_ARN || secrets.JWT_SECRET_ARN }}
+      JWT_AUDIENCE: ${{ vars.JWT_AUDIENCE }}
+      TF_IN_AUTOMATION: 'true'
+      AWS_PAGER: ''
 
     steps:
       - name: Obter codigo
@@ -34,11 +45,11 @@ jobs:
         uses: actions/setup-java@v4
         with:
           distribution: temurin
-          java-version: "21"
+          java-version: '21'
           cache: maven
 
-      - name: Testar e gerar JAR da Lambda
-        run: mvn --batch-mode verify
+      - name: Gerar artefato validado
+        run: mvn --batch-mode -DskipTests package
 
       - name: Configurar credenciais temporarias AWS Academy
         uses: aws-actions/configure-aws-credentials@v5
@@ -46,24 +57,47 @@ jobs:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-session-token: ${{ secrets.AWS_SESSION_TOKEN }}
-          aws-region: ${{ vars.TF_STATE_REGION }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Conferir dependencias e preparar Terraform
+        env:
+          JWT_SECRET: ${{ secrets.JWT_SECRET }}
+        run: python3 scripts/prepare_deploy.py
 
       - name: Configurar Terraform
         uses: hashicorp/setup-terraform@v3
         with:
-          terraform_version: "1.15.8"
+          terraform_version: '1.15.8'
+          terraform_wrapper: false
 
       - name: Inicializar state remoto
-        run: >-
-          terraform -chdir=infra init
-          -backend-config="bucket=${{ secrets.TF_STATE_BUCKET }}"
-          -backend-config="key=${{ env.TF_STATE_KEY }}"
-          -backend-config="region=${{ vars.TF_STATE_REGION }}"
-          -backend-config="encrypt=true"
-          -backend-config="use_lockfile=true"
+        run: terraform -chdir=infra init -input=false -lockfile=readonly -backend-config=backend.hcl
 
-      - name: Planejar infraestrutura
-        run: terraform -chdir=infra plan -out=tfplan
+      - name: Planejar e aplicar infraestrutura
+        env:
+          JWT_SECRET: ${{ secrets.JWT_SECRET }}
+        shell: bash
+        run: |
+          if [[ -n "$JWT_SECRET" ]]; then
+            export TF_VAR_jwt_shared_secret="$JWT_SECRET"
+          fi
+          terraform -chdir=infra plan -input=false -lock-timeout=120s -out=tfplan
+          terraform -chdir=infra apply -input=false -lock-timeout=120s -auto-approve tfplan
 
-      - name: Aplicar infraestrutura
-        run: terraform -chdir=infra apply -auto-approve tfplan
+      - name: Verificar endpoint publicado
+        env:
+          AUTH_TEST_CPF: ${{ secrets.AUTH_TEST_CPF }}
+        run: |
+          export AUTH_URL="$(terraform -chdir=infra output -raw authenticate_customer_url)"
+          python3 scripts/smoke_auth.py
+          {
+            echo '### Auth implantado'
+            echo "Endpoint: $AUTH_URL"
+            echo 'O smoke 400 valida Gateway/Lambda. O fluxo RDS/200 requer AUTH_TEST_CPF ativo.'
+            echo 'Contrato para a API: sub=UUID do cliente, principal_type=CLIENTE, HS256.'
+            echo "JWT secret ARN: $(terraform -chdir=infra output -raw jwt_secret_arn)"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Remover arquivos temporarios com state e plano
+        if: always()
+        run: rm -f infra/tfplan infra/deploy.auto.tfvars.json infra/backend.hcl

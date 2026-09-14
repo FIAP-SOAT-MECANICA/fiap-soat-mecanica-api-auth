@@ -74,10 +74,14 @@ public final class AuthHandler implements RequestHandler<APIGatewayV2HTTPEvent, 
             throw new IllegalArgumentException("Corpo ausente");
         }
         String body = event.getBody();
+        if (body.length() > 4096) {
+            throw new IllegalArgumentException("Corpo excede o limite");
+        }
         if (event.getIsBase64Encoded()) {
             body = new String(Base64.getDecoder().decode(body), StandardCharsets.UTF_8);
         }
         JsonNode root = objectMapper.reader()
+                .with(com.fasterxml.jackson.core.JsonParser.Feature.STRICT_DUPLICATE_DETECTION)
                 .with(DeserializationFeature.FAIL_ON_TRAILING_TOKENS).readTree(body);
         if (root == null || !root.isObject() || !root.has("cpf") || root.size() != 1
                 || !root.get("cpf").isTextual()) {

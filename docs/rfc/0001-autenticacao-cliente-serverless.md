@@ -1,7 +1,7 @@
 # RFC 0001 — Autenticação de cliente por CPF com Function Serverless
 
-- **Status:** aprovado
-- **Data:** 2026-09-12
+- **Status:** implementada no Auth; aceite integrado pendente
+- **Data:** 2026-09-14
 - **Escopo:** repositório `fiap-soat-mecanica-api-auth` e contrato consumido pela API principal
 
 ## 1. Contexto
@@ -54,9 +54,11 @@ CPF inexistente e cliente inativo retornam ambos `401 ACCESS_DENIED`. CPF invál
 
 ## 5. Segurança, privacidade e observabilidade
 
-Os segredos de banco e a chave JWT são armazenados no AWS Secrets Manager. A Lambda recebe somente seus ARNs por variáveis de ambiente e usa uma política IAM limitada à leitura desses segredos, aos logs necessários e às interfaces de rede da Lambda.
+Os segredos de banco e a chave JWT são armazenados no AWS Secrets Manager. A Lambda recebe somente seus ARNs e mantém cache por cinco minutos. A role própria opcional limita a leitura aos dois segredos; no Academy o stack reutiliza o `LabRole` existente, sem alterar sua política mais ampla. Quando o Auth gerencia a chave JWT, o state contém seu valor sensível e deve permanecer cifrado no S3, sem upload de plano/state como artefato.
 
-A função é implantada em sub-redes privadas e seu security group deve permitir apenas TCP/5432 para o banco. Como o segredo é lido em execução, a rede precisa de saída HTTPS controlada ou de endpoint de interface para o Secrets Manager.
+A função usa subnets da VPC do RDS e o SG que o banco já autoriza. O preflight deriva a rede da conta corrente, valida DNS, duas AZs, segredo DB e `LabRole`; o Auth não modifica regras de RDS/EKS. O endpoint privado Secrets Manager é criado pelo Auth se não existir um compatível. Esse recurso tem custo e pode ser compartilhado entre os ambientes; o stack proprietário deve permanecer até encerrar os consumidores. A conexão PostgreSQL exige TLS com certificado e hostname verificados pela CA RDS empacotada no JAR, com limites de tempo para conexão/leitura/consulta.
+
+O Gateway limita chamadas a 10/s e burst de 20. O parser rejeita campos duplicados, documentos maiores que 4096 caracteres e CPFs com letras. As consultas usam parâmetros JDBC. A autenticação baseada apenas em CPF atende ao enunciado acadêmico, mas o conhecimento do documento não equivale à comprovação de posse; uso além desse escopo requer fator adicional e controles de abuso apropriados.
 
 Os logs da Lambda são JSON e não contêm CPF, token, senha, segredo ou string de conexão. A função devolve `x-correlation-id`; quando fornecido pelo cliente, o mesmo identificador é preservado. O ID de requisição do API Gateway também é registrado como `apiGatewayRequestId`, permitindo correlacionar o log de acesso do gateway com o log da Lambda.
 
@@ -76,7 +78,7 @@ Rejeitada. A verificação local da assinatura pela API principal reduz latênci
 
 ### Usar credenciais temporárias AWS Academy na pipeline
 
-Aceita para a demonstração. O Learner Lab não permite criar a role IAM exigida pelo OIDC do GitHub. A pipeline recebe `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY` e `AWS_SESSION_TOKEN` como secrets de ambiente, válidos somente durante a sessão. O Terraform reutiliza o `LabRole` existente pelo respectivo ARN e não tenta criar ou alterar papéis IAM.
+Aceita para a demonstração. A pipeline recebe `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY` e `AWS_SESSION_TOKEN` da organização/ambiente, válidos somente durante a sessão. Descobre o ARN do `LabRole` na conta autenticada e não tenta criar ou alterar papéis IAM no fluxo Academy. Isso evita depender da criação de roles/provedor OIDC que pode ser restringida pelo Lab.
 
 ### Usar token assimétrico
 
@@ -86,14 +88,26 @@ Não adotada nesta fase. JWT assimétrico eliminaria o compartilhamento da chave
 
 Esta decisão cria uma separação explícita entre autenticação de cliente e autenticação interna. A API principal precisa implementar um caminho de autorização para `CLIENTE`; o repositório de banco precisa disponibilizar cliente ativo, segredo e conectividade; a infraestrutura Kubernetes precisa fornecer a rede privada e os grupos de segurança compatíveis.
 
-O repositório Auth mantém a Lambda, o contrato OpenAPI, o Terraform de Lambda/API Gateway, a pipeline e a documentação desta decisão. A infraestrutura compartilhada mantém VPC, sub-redes, state remoto, segredos, banco e o `LabRole` da conta temporária de demonstração.
+O Auth mantém Lambda, API Gateway, logs, contrato, pipeline, segredo JWT opcional e endpoint Secrets Manager opcional. A infraestrutura compartilhada mantém VPC, subnets, bucket de state, segredo DB, RDS e `LabRole`. O segredo JWT externo também pode ser reutilizado; quando gerado no Auth, a API deve consumir a mesma chave base64 pelo ARN de output. Alterações na chave exigem rotação coordenada e invalidam tokens anteriores.
 
 ## 8. Estratégia de entrega e validação
 
-As alterações passam por Pull Request com a pipeline de CI executando `mvn verify`, `terraform fmt -check` e `terraform validate`. Os merges em `homolog` e `main` disparam o workflow de deploy para homologação e produção, respectivamente, usando state remoto separado por ambiente.
+As alterações passam por PR com testes unitários, execução do JAR em JVM isolada contra PostgreSQL 17, testes Python do preflight, `terraform fmt -check`, `validate` e três planos simulados com `terraform test`. As versões Terraform são fixadas em 1.15.8. Merge em `homolog`/`main`, ou execução manual nessas branches, dispara o mesmo CI antes de implantar em homologação/produção. O deploy não é cancelado durante apply e usa chaves S3 distintas por ambiente.
 
 O aceite integrado deve demonstrar: CPF válido de cliente ativo emitindo JWT; CPF inválido; cliente ausente ou inativo; acesso autorizado e rejeitado a uma rota de cliente; logs correlacionados entre API Gateway e Lambda; e execução aprovada das pipelines. O roteiro detalhado está em [Checklist de aceite](../checklist-aceite.md).
 
 ## 9. Critérios para revisão futura
 
 Esta RFC deve ser revisada se houver necessidade de revogação imediata de tokens, integração com outro provedor de identidade, múltiplas APIs consumidoras, auditoria centralizada ou adoção de assinatura assimétrica. Nesses casos, a rotação de chaves, os públicos permitidos e o formato do principal devem ser discutidos antes de alterar o contrato.
+
+## 10. Auditoria de alinhamento de 14/09/2026
+
+Referências consultadas somente em leitura na organização `FIAP-SOAT-MECANICA`:
+
+| Repo e revisão | Contrato conferido | Resultado para o Auth |
+| --- | --- | --- |
+| API `79f6b3f` | `clientes`: UUID, CPF 11 dígitos, status ATIVO/INATIVO, migrations da aplicação | SQL e fixture compatíveis. Filtro JWT ainda procura usuário por e-mail; aceite de CLIENTE continua pendente na API |
+| DB `782c322` | PostgreSQL 17, `mecanica-db-prod`, segredo `mecanica-db-credentials` com host/port/dbname/username/password, ingress por SG | Preflight descobre e confere esses recursos na conta de deploy |
+| K8s `d5f9df4` | EKS `mecanica`, VPC padrão, subnets e `LabRole` existentes | Auth reaproveita rede autorizada; endpoint privado resolve acesso Secrets Manager sem exigir NAT |
+
+`TF_STATE_BUCKET` é Variable, não Secret. `TF_STATE_REGION` permanece suportada. O state Auth usa `auth/<ambiente>/terraform.tfstate`, sem compartilhar a chave dos outros repos. Credenciais reais são a entrada de acesso, mas não substituem recursos compartilhados, migrations, fixtures e o contrato de autorização da API. Nenhum arquivo dos outros três repositórios foi modificado por esta auditoria.
