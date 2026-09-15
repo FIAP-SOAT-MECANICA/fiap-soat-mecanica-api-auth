@@ -94,7 +94,7 @@ A aplicação protegida deve usar a **mesma chave base64** armazenada no segredo
 | `aud` | valor de `JWT_AUDIENCE` |
 | `iat`, `exp`, `jti` | presentes; expiração padrão de 3600 segundos |
 
-A validação deve verificar assinatura, `exp`, `iss`, `aud` e `principal_type=CLIENTE` antes de liberar qualquer rota de cliente. O filtro JWT atual da aplicação usa assunto por e-mail para usuários internos; ele precisa ser adaptado para reconhecer este principal de cliente sem transformar um UUID em e-mail. Essa mudança é uma dependência de integração no repositório da aplicação.
+A validação deve verificar assinatura, `exp`, `iss`, `aud` e `principal_type=CLIENTE` antes de liberar qualquer rota de cliente. **Implementado** no repositório da aplicação: o filtro JWT tenta validar o token como cliente primeiro, com uma chave própria (`AUTH_JWT_SECRET`, lida do Secrets Manager deste repo, separada da chave dos tokens internos por e-mail); se não bater, cai no fluxo interno de sempre. A rota `GET /clientes/me` já usa esse principal de cliente sem tratar o UUID como e-mail.
 
 ## Segredos e rede
 
