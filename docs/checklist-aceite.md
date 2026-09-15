@@ -15,9 +15,10 @@ Os itens marcados nesta seção foram comprovados localmente por testes automati
 ## JWT e proteção integrada
 
 - [x] Token contém UUID em `sub`, `principal_type=CLIENTE`, `iss`, `aud`, `iat`, `exp` e `jti`.
-- [ ] Rota de cliente na API principal aceita token válido e devolve/propaga a correlação.
-- [ ] Mesma rota rejeita token ausente, assinatura alterada, expirado, issuer/audience incorretos e `principal_type` inadequado.
-- [ ] Nenhuma rota sensível da aplicação permanece pública por configuração acidental.
+- [x] Rota de cliente na API principal (`GET /clientes/me`) aceita o token válido, com chave de validação própria (`AUTH_JWT_SECRET`, lida do Secrets Manager deste repo) separada da chave dos tokens internos.
+- [x] Mesma rota rejeita token ausente (401/403 pela regra de autorização), assinatura alterada, expirado, issuer/audience incorretos e `principal_type` inadequado (400/401 sem derrubar a API com 500).
+- [ ] A resposta da rota de cliente ainda não devolve/propaga `x-correlation-id` — pendente junto com a observabilidade estruturada da API principal.
+- [ ] Nenhuma rota sensível da aplicação permanece pública por configuração acidental — não auditado especificamente nesta revisão.
 
 ## Infraestrutura, pipeline e documentação
 
@@ -44,8 +45,8 @@ Os itens marcados nesta seção foram comprovados localmente por testes automati
 ## Alinhamento externo que permanece obrigatório
 
 - Banco/rede: recursos dos repos DB/K8s criados na conta única, migrations aplicadas pela aplicação e fixture ativa cadastrada. O Auth não cria nem modifica esses recursos.
-- API principal: aceitar UUID de cliente em `sub`, validar HS256/issuer/audience/expiração/principal e restringir acesso aos dados do cliente. Na revisão `79f6b3f`, o filtro ainda interpreta `sub` como e-mail de usuário interno e o CD ainda usa Kind/GHCR.
-- Compartilhar a mesma chave JWT por mecanismo de segredo, sem versionar o valor. Se gerada pelo Auth, usar o ARN informado nos outputs; a chave já está em base64 no campo `secret`.
+- API principal: aceitar UUID de cliente em `sub`, validar HS256/issuer/audience/expiração/principal e restringir acesso aos dados do cliente. **Resolvido** a partir da revisão que introduz `GET /clientes/me`: o filtro tenta o token de cliente (chave própria, `iss`/`aud`/`principal_type` conferidos) antes do fluxo interno por e-mail, e o CD da API agora tem um job de deploy real no EKS (`deploy-eks`), além do Kind/GHCR usado só como gate de CI.
+- Compartilhar a mesma chave JWT por mecanismo de segredo, sem versionar o valor. Se gerada pelo Auth, usar o ARN informado nos outputs; a chave já está em base64 no campo `secret`. **Resolvido**: a pipeline `deploy-eks` da API lê esse mesmo secret do Secrets Manager em tempo de deploy (`AUTH_JWT_SECRET`), sem copiar o valor manualmente.
 - GitHub: proteção/Rulesets, acesso do professor e ambientes são configurações da plataforma; não são comprovados por testes de código. Não marcar entrega integrada apenas com o CI local aprovado.
 
 ## Evidências para o vídeo

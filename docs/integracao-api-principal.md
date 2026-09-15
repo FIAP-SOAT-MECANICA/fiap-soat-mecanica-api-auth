@@ -30,6 +30,18 @@ O filtro atual da API principal carrega um `UserDetails` pelo assunto do token. 
 
 O segredo JWT deve ser igual nos dois componentes, mas seu valor não pode entrar em Git, logs, manifestos Kubernetes ou vídeo. Cada workload deve recebê-lo pelo mecanismo de segredos do ambiente.
 
+## Status da integração
+
+A API principal já valida o token de cliente (chave própria lida do Secrets
+Manager deste repo, `iss`/`aud`/`principal_type` conferidos) e expõe
+`GET /clientes/me`, autenticado com esse token, sem tratar o UUID como e-mail.
+Um token inválido (assinatura alterada, expirado, issuer/audience incorretos)
+é rejeitado sem derrubar a API com erro 500.
+
+Ainda pendente: a resposta da API principal não propaga `x-correlation-id`
+recebido do Auth — isso faz parte do trabalho de observabilidade estruturada
+da aplicação, não da validação do token em si.
+
 ## Roteiro mínimo de aceite integrado
 
 1. Criar ou usar um cliente `ATIVO` com CPF válido no banco compartilhado.
@@ -46,4 +58,4 @@ O segredo DB precisa seguir o JSON `host`, `port` inteiro, `dbname`, `username`,
 
 Após deploy, `jwt_secret_arn` é o ARN que a API deve usar para obter o campo JSON `secret`. Esse campo já é base64: decodifique uma única vez ao construir a chave HS256. Se o grupo fornecer `JWT_SECRET` ao Auth, a API deve receber exatamente o mesmo valor. Não grave o segredo em manifesto versionado.
 
-Evidência da pendência: na API `79f6b3f`, `JwtAuthenticationFilter` chama `userDetailsService.loadUserByUsername` com o `sub`; `JwtService` trata esse valor como e-mail. É necessário validar CLIENTE e autorizar somente suas rotas/dados, sem converter seu UUID em identidade de funcionário. Esse ajuste não pode ser substituído por credenciais AWS e não foi realizado pelo Auth.
+Resolvido: `JwtAuthenticationFilter` na API agora tenta validar o token como cliente (chave própria, `iss`/`aud`/`principal_type` conferidos) antes de cair no fluxo por e-mail dos usuários internos, e `GET /clientes/me` autoriza e retorna os dados do cliente pelo UUID do token, sem convertê-lo em identidade de funcionário.
