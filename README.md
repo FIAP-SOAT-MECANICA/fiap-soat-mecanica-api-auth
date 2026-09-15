@@ -203,5 +203,6 @@ A aplicação grava eventos JSON em stdout; Lambda os envia ao grupo CloudWatch.
 - [RFC da estratégia de autenticação](docs/rfc/0001-autenticacao-cliente-serverless.md)
 - [Contrato de integração com a API principal](docs/integracao-api-principal.md)
 - [Checklist de aceite e vídeo](docs/checklist-aceite.md)
+- [Guia de demonstração: execução, telas e falas](docs/guia-demonstracao-auth.md)
 
 Para a demonstração: mostre CPF válido de cliente ativo retornando JWT; CPF inválido (`400`); inexistente/inativo (`401`); uma rota protegida aceitando esse JWT e rejeitando token ausente, expirado ou inválido; execução do pipeline; recursos implantados; e logs correlacionados. Nunca exponha token ou segredo real no vídeo.
